@@ -1,3 +1,8 @@
+/*
+ * USB HID host
+ * for ShackMaster USB connection
+*/
+
 #include "stdio.h"
 #include "time.h"
 #include "stdint.h"

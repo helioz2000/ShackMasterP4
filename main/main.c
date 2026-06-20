@@ -1,5 +1,7 @@
 /*
- * For details see README.md
+ * ShackMaster 600 Control
+ * for ESP32-P4-ETH board 
+ * Please see README.md for application details
  */
 //#include <stdio.h>
 //#include <string.h>
@@ -36,15 +38,11 @@ void app_main(void)
             }
 
             if (APP_EVENT_HID_HOST ==  evt_queue.event_group) {
-                hid_host_device_event(evt_queue.hid_host_device.handle,
-                                      evt_queue.hid_host_device.event,
-                                      evt_queue.hid_host_device.arg);
+                hid_host_device_event(evt_queue.hid_host_device.handle, evt_queue.hid_host_device.event, evt_queue.hid_host_device.arg);
             }
 
             if (APP_EVENT_HID_INTERFACE == evt_queue.event_group) {
-                hid_host_interface_event(evt_queue.hid_host_device.handle,
-                                      evt_queue.hid_host_device.event,
-                                      evt_queue.hid_host_device.arg);
+                hid_host_interface_event(evt_queue.hid_host_device.handle, evt_queue.hid_host_device.event, evt_queue.hid_host_device.arg);
             }
         }
     }   // while
