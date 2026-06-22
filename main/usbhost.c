@@ -87,7 +87,7 @@ esp_err_t send_hid_output(hid_host_device_handle_t hid_device_handle, uint8_t re
     //ESP_LOGI(TAG, "Sent %d bytes to device successfully.", data_len);
     if (expect_response) {
         sm_awaiting_response = true;
-        sm_response_timer = xTimerCreate( "SM Response Timer", pdMS_TO_TICKS(SM_RESPONSE_TIMEOUT_MS), pdFALSE, NULL, sm_response_timer_callback );
+        xTimerStart(sm_response_timer, 0);
     } else {
         sm_awaiting_response = false;
     }
@@ -489,6 +489,9 @@ void usb_hid_init(void) {
 
     // Create queue
     app_event_queue = xQueueCreate(10, sizeof(app_event_queue_t));
+
+    // Create timer to check SM response
+    sm_response_timer = xTimerCreate( "SM Response Timer", pdMS_TO_TICKS(SM_RESPONSE_TIMEOUT_MS), pdFALSE, NULL, sm_response_timer_callback );
 
     ESP_LOGI(TAG, "Waiting for HID Device to be connected");
 }
