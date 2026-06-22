@@ -22,6 +22,8 @@ static const char *TAG = "usbhost";
 bool sm_is_connected = false;
 bool sm_awaiting_response = false;
 hid_host_device_handle_t sm_device_handle;
+TimerHandle_t sm_response_timer = NULL;
+#define SM_RESPONSE_TIMEOUT_MS 300
 
 // USB device details
 char usb_dev_manufacturer[HID_STR_DESC_MAX_LENGTH] = {0};
@@ -40,6 +42,14 @@ extern QueueHandle_t app_event_queue;
 // Analog value storage
 sm_values_t sm_values;
 
+// Non-blocking timer callback. Fires instantly on cycle, consumes near-zero CPU.
+void sm_response_timer_callback(TimerHandle_t xTimer) {
+    //ESP_LOGI(TAG, "%s", __func__ );
+    if (!sm_awaiting_response) return;
+    sm_awaiting_response = false;
+    ESP_LOGW(TAG, "SM failed to respond");
+}
+
 /**
  * @brief Send data to 
  *
@@ -47,8 +57,9 @@ sm_values_t sm_values;
  * @param[in] report_id          USB HID report identifier 
  * @param[in] data               Pointer to data buffer for byte sequence
  * @param[in] data_len           Length of data in buffer
+ * @param[in] expect_response    True if a response from the device is expected
  */
-esp_err_t send_hid_output(hid_host_device_handle_t hid_device_handle, uint8_t report_id, uint8_t *data, size_t data_len)
+esp_err_t send_hid_output(hid_host_device_handle_t hid_device_handle, uint8_t report_id, uint8_t *data, size_t data_len, bool expect_response)
 {
     if (!sm_is_connected) {
         ESP_LOGW(TAG,"Shackmaster is not connected - HID output failed");
@@ -70,10 +81,17 @@ esp_err_t send_hid_output(hid_host_device_handle_t hid_device_handle, uint8_t re
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Transfer failed: %s", esp_err_to_name(err));
-    } else {
-        //ESP_LOGI(TAG, "Sent %d bytes to device successfully.", data_len); 
+        return err;
     }
-    return err;
+
+    //ESP_LOGI(TAG, "Sent %d bytes to device successfully.", data_len);
+    if (expect_response) {
+        sm_awaiting_response = true;
+        sm_response_timer = xTimerCreate( "SM Response Timer", pdMS_TO_TICKS(SM_RESPONSE_TIMEOUT_MS), pdFALSE, NULL, sm_response_timer_callback );
+    } else {
+        sm_awaiting_response = false;
+    }
+    return ESP_OK;
 }
 
 /**
@@ -90,8 +108,7 @@ bool sm_set_power(bool newState)
         cmd_buf[5] = '0';       // Switch OFF
     }
 
-    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf)) == ESP_OK) {
-        sm_awaiting_response = true;
+    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf), true) == ESP_OK) {
         return true;
     }
     return false;
@@ -103,8 +120,7 @@ bool sm_set_power(bool newState)
 bool sm_get_values() {
     memset(cmd_buf, 0, sizeof(cmd_buf));    // clear command buffer
     memcpy(cmd_buf, cmd_get_analogs, sizeof(cmd_get_analogs));
-    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf)) == ESP_OK) {
-        sm_awaiting_response = true;
+    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf), true) == ESP_OK) {
         return true;
     }
     return false;
@@ -118,8 +134,7 @@ bool sm_get_power(void)
     // clear command buffer
     memset(cmd_buf, 0, sizeof(cmd_buf));
     memcpy(cmd_buf, cmd_power_status, sizeof(cmd_power_onoff));
-    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf)) == ESP_OK) {
-        sm_awaiting_response = true;
+    if ( send_hid_output(sm_device_handle, SM_HID_REPORT_ID, cmd_buf, sizeof(cmd_buf),true) == ESP_OK) {
         return true;
     }
     return false;
