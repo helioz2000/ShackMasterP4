@@ -44,7 +44,7 @@ sm_values_t sm_values;
 
 // Non-blocking timer callback. Fires instantly on cycle, consumes near-zero CPU.
 void sm_response_timer_callback(TimerHandle_t xTimer) {
-    //ESP_LOGI(TAG, "%s", __func__ );
+    ESP_LOGI(TAG, "%s", __func__ );
     if (!sm_awaiting_response) return;
     sm_awaiting_response = false;
     ESP_LOGW(TAG, "SM failed to respond");
