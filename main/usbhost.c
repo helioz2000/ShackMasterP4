@@ -42,9 +42,16 @@ extern QueueHandle_t app_event_queue;
 // Analog value storage
 sm_values_t sm_values;
 
-// Non-blocking timer callback. Fires instantly on cycle, consumes near-zero CPU.
+/**
+ * @brief Non-blocking timer callback.
+ * 
+ * Fires instantly on cycle, consumes near-zero CPU.
+ * A reply from SM should be received well before this function is called
+ * and sm_awaiting_response should be false.
+ * Check if sm_awaiting_response is true which indicates no response has been received. 
+ */
 void sm_response_timer_callback(TimerHandle_t xTimer) {
-    ESP_LOGI(TAG, "%s", __func__ );
+    //ESP_LOGI(TAG, "%s", __func__ );
     if (!sm_awaiting_response) return;
     sm_awaiting_response = false;
     ESP_LOGW(TAG, "SM failed to respond");
